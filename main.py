@@ -33,6 +33,11 @@ OUT_PATH = Path("/output/entry.txt")
 # the voice carry it. The brief forbids them; the check enforces it.
 PLAIN_TIRED_WORDS = ("tired", "weary", "exhausted", "sleepy", "fatigue")
 
+# House limits from the brief: one paragraph, 1-600 characters,
+# about 100 words (the gate accepts 95-105).
+CHARS_MIN, CHARS_MAX = 1, 600
+WORDS_MIN, WORDS_MAX = 95, 105
+
 
 def check_monologue(text: str) -> str:
     """Return the monologue unchanged, or raise if it breaks a rule."""
@@ -41,13 +46,15 @@ def check_monologue(text: str) -> str:
         raise ValueError("monologue is blank")
     if "\n" in spoken or "\r" in spoken:
         raise ValueError("monologue must be one unbroken paragraph")
-    if not 1 <= len(spoken) <= 600:
+    if "  " in spoken or "\t" in spoken:
+        raise ValueError("monologue has doubled spaces or tabs")
+    if not CHARS_MIN <= len(spoken) <= CHARS_MAX:
         raise ValueError(
-            "monologue is %d characters; the gate allows 1 to 600"
-            % len(spoken)
+            "monologue is %d characters; the gate allows %d to %d"
+            % (len(spoken), CHARS_MIN, CHARS_MAX)
         )
     words = spoken.split()
-    if not 95 <= len(words) <= 105:
+    if not WORDS_MIN <= len(words) <= WORDS_MAX:
         raise ValueError(
             "monologue is %d words; the brief asks for about 100"
             % len(words)
@@ -68,6 +75,8 @@ def emit(text: str) -> tuple[int, int]:
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     blob = spoken.encode("utf-8")
     OUT_PATH.write_bytes(blob)
+    if OUT_PATH.read_bytes() != blob:
+        raise IOError("written bytes do not match the checked monologue")
     return len(spoken.split()), len(blob)
 
 
